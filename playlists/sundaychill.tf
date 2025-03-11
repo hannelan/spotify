@@ -21,6 +21,10 @@ resource "spotify_playlist" "sundaychill" {
 ### Songs ###
 #############
 
-data "spotify_track" "Adrenaline" {
-    url = "https://open.spotify.com/track/6LfGXTFCLMNh4WUBxW8LSS?si=310e8dd20c834d9e"
+data "spotify_track" "Ladybug" {
+    url = "https://open.spotify.com/track/2VWs3tTCpvPIPwwgpG68Gj?si=37a19ad977ab4a0d"
+}
+
+data "spotify_track" "Ilikethewayyoukissme" {
+    url = "https://open.spotify.com/track/2GxrNKugF82CnoRFbQfzPf?si=19f8b3f4f2e546cd"
 }
