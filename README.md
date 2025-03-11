@@ -1,8 +1,8 @@
 # Spotify
 
-1. Create an app in Shopify developer portal.
+1. Create an app in Spotify developer portal.
 2. Set the redirect url to `http://127.0.0.1:8080/callback`
-3. Modify this url to contain your client_id you got from Shopify, and visit the url:
+3. Modify this url to contain your client_id you got from Spotify, and visit the url:
 https://accounts.spotify.com/authorize?response_type=code&client_id=CLIENT_ID&scope=playlist-modify-private%20playlist-modify-public&redirect_uri=http%3A%2F%2F127.0.0.1:8080%2Fcallback&state=blablabla
 
 4. After you apporved the app you're gonna be redirected back to http://127.0.0.1:8080, the browser will give you a 404, but that's ok!
