@@ -13,12 +13,17 @@ resource "spotify_playlist" "sundaychill" {
     data.spotify_track.Skisse2.id,
     data.spotify_track.Binz.id,
     data.spotify_track.Intermezzo.id,
+    data.spotify_track.Aloha.id,
   ]
 }
 
 #############
 ### Songs ###
 #############
+
+data "spotify_track" "Aloha" {
+    url = "https://open.spotify.com/track/4jNa66Mi5PgcXrEaCiPNMu"
+}
 
 data "spotify_track" "Asleep" {
     url = "https://open.spotify.com/track/7vXEZPq2qVF0Skw2OukbLG?si=a9657280200246e7"

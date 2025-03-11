@@ -1,0 +1,115 @@
+name: Spotify Playlist Sync
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'playlists/**'
+  workflow_dispatch:  # Allows manual triggering
+
+jobs:
+  deploy_playlist:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.0.0
+      
+      - name: Setup Spotify Provider
+        run: |
+          mkdir -p ~/.terraform.d/plugins/registry.terraform.io/conradludgate/spotify/0.2.7/linux_amd64
+          curl -L -o spotify-provider.zip https://github.com/conradludgate/terraform-provider-spotify/releases/download/v0.2.7/terraform-provider-spotify_0.2.7_linux_amd64.zip
+          unzip spotify-provider.zip -d ~/.terraform.d/plugins/registry.terraform.io/conradludgate/spotify/0.2.7/linux_amd64/
+          rm spotify-provider.zip
+      
+      - name: Get Spotify Access Token
+        id: spotify_token
+        run: |
+          REFRESH_TOKEN="${{ secrets.SPOTIFY_REFRESH_TOKEN }}"
+          CLIENT_ID="${{ secrets.SPOTIFY_CLIENT_ID }}"
+          CLIENT_SECRET="${{ secrets.SPOTIFY_CLIENT_SECRET }}"
+          
+          RESPONSE=$(curl -s -X POST -H "Content-Type: application/x-www-form-urlencoded" \
+            -d "grant_type=refresh_token&refresh_token=${REFRESH_TOKEN}&client_id=${CLIENT_ID}&client_secret=${CLIENT_SECRET}" \
+            https://accounts.spotify.com/api/token)
+          
+          ACCESS_TOKEN=$(echo $RESPONSE | jq -r '.access_token')
+          echo "::add-mask::$ACCESS_TOKEN"
+          echo "access_token=$ACCESS_TOKEN" >> $GITHUB_OUTPUT
+        env:
+          SPOTIFY_REFRESH_TOKEN: ${{ secrets.SPOTIFY_REFRESH_TOKEN }}
+          SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
+          SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+      
+      - name: Setup Mock Auth Server
+        run: |
+          cat > mock_auth_server.py << EOL
+          from http.server import HTTPServer, BaseHTTPRequestHandler
+          import json
+
+          class AuthHandler(BaseHTTPRequestHandler):
+              def do_GET(self):
+                  self.send_response(200)
+                  self.send_header('Content-Type', 'application/json')
+                  self.end_headers()
+                  response = {
+                      "access_token": "${{ steps.spotify_token.outputs.access_token }}"
+                  }
+                  self.wfile.write(json.dumps(response).encode())
+                  
+              def do_POST(self):
+                  self.send_response(200)
+                  self.send_header('Content-Type', 'application/json')
+                  self.end_headers()
+                  response = {
+                      "access_token": "${{ steps.spotify_token.outputs.access_token }}",
+                      "token_type": "Bearer",
+                      "expires_in": 3600
+                  }
+                  self.wfile.write(json.dumps(response).encode())
+
+          httpd = HTTPServer(('127.0.0.1', 27228), AuthHandler)
+          print("Server started at localhost:27228")
+          httpd.serve_forever()
+          EOL
+          
+          python3 mock_auth_server.py &
+      
+      - name: Create Terraform Config
+        run: |
+          cat > playlists/provider.tf << EOL
+          terraform {
+            required_providers {
+              spotify = {
+                source = "conradludgate/spotify"
+                version = "0.2.7"
+              }
+            }
+          }
+
+          provider "spotify" {
+            api_key = var.spotify_api_key
+            auth_server = "http://localhost:27228"
+          }
+
+          variable "spotify_api_key" {
+            type = string
+          }
+          EOL
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: playlists
+      
+      - name: Terraform Plan
+        run: terraform plan -var="spotify_api_key=${{ steps.spotify_token.outputs.access_token }}"
+        working-directory: playlists
+      
+      - name: Terraform Apply
+        run: terraform apply -auto-approve -var="spotify_api_key=${{ steps.spotify_token.outputs.access_token }}"
+        working-directory: playlists
