@@ -45,7 +45,13 @@ jobs:
           SPOTIFY_REFRESH_TOKEN: ${{ secrets.SPOTIFY_REFRESH_TOKEN }}
           SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
           SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
-      
+
+      - name: Debug Environment
+        run: |
+          echo "CLIENT ID is set: ${SPOTIFY_CLIENT_ID:+yes}"
+          echo "CLIENT SECRET is set: ${SPOTIFY_CLIENT_SECRET:+yes}"
+          echo "REFRESH TOKEN is set: ${SPOTIFY_REFRESH_TOKEN:+yes}"
+
       - name: Setup Mock Auth Server
         run: |
           cat > mock_auth_server.py << EOL
